@@ -1,7 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import pandas as pd
-import sklearn
+from sklearn import svm
+from sklearn import grid_search
+from sklearn.preprocessing import scale
 
 def accuracy_score(truth, pred):
     """ Returns accuracy score for input truth and predictions. """
@@ -46,23 +48,22 @@ train_data.ix[train_data.Sex == "male", "Sex"] = 1
 train_data.ix[train_data.Sex == "female", "Sex"] = 0
 train_data.Age = train_data.fillna(train_data.Age.mean())
 
-from sklearn.preprocessing import scale
+
 # normalizing the data
 train_data_scaled = scale(train_data)
 
-from sklearn import svm
+
 clf = svm.SVC(decision_function_shape='poly')
 clf.fit(train_data_scaled, train_data_results)
 print accuracy_score(train_data_results,clf.predict(train_data_scaled))
 
-from sklearn import grid_search
+
 parameters = {'kernel':('linear', 'rbf'), 'C':[1, 10]}
 clf2 = grid_search.GridSearchCV(svm.SVC(), parameters)
 clf2.fit(train_data_scaled, train_data_results)
 print accuracy_score(train_data_results,clf2.predict(train_data_scaled))
 
 test_data = test_data_raw[["PassengerId","Pclass","Sex","Age","SibSp","Parch","Fare"]]
-
 
 
 predictions = predictions_3(test_data)
