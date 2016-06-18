@@ -17,17 +17,6 @@ def accuracy_score(truth, pred):
         return "Number of predictions does not match number of outcomes!"
 
 
-def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.Blues):
-    plt.imshow(cm, interpolation='nearest', cmap=cmap)
-    plt.title(title)
-    plt.colorbar()
-    # tick_marks = np.arange(len(iris.target_names))
-    # plt.xticks(tick_marks, iris.target_names, rotation=45)
-    # plt.yticks(tick_marks, iris.target_names)
-    plt.tight_layout()
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
-
 # Import train and test raw data
 train_data_raw = pd.read_csv("train.csv")
 test_data_raw = pd.read_csv("test.csv")
@@ -61,14 +50,6 @@ res2 = model2.predict(train_data_scaled)
 
 print "gridsearch accuracy: " + str(accuracy_score(train_data_results, res1))
 print "regular accuracy: " + str(accuracy_score(train_data_results, res2))
-
-
-from sklearn.metrics import confusion_matrix
-cm = confusion_matrix(res1, clf.predict(train_data_scaled))
-plot_confusion_matrix(cm)
-
-cm = confusion_matrix(res2, clf.predict(train_data_scaled))
-plot_confusion_matrix(cm)
 
 
 test_data = test_data_raw[["PassengerId", "Pclass", "Sex", "Age", "SibSp", "Parch", "Fare"]]
