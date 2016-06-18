@@ -1,9 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import pandas as pd
-from sklearn import svm
+from sklearn import tree
 from sklearn import grid_search
 from sklearn.preprocessing import scale
+import matplotlib.pyplot as plt
+import numpy as np
 
 def accuracy_score(truth, pred):
     """ Returns accuracy score for input truth and predictions. """
@@ -14,64 +16,76 @@ def accuracy_score(truth, pred):
     else:
         return "Number of predictions does not match number of outcomes!"
 
-def predictions_3(data):
-    """ Model with multiple features. Makes a prediction with an accuracy of at least 80%. """
-    predictions = []
-    for _, passenger in data.iterrows():
-        if (passenger.Sex == "female") & (passenger.SibSp <= 2):
-            predictions.append(1)
-        elif (passenger.Age <= 10) & (passenger.SibSp <= 3) & (passenger.Sex == "male"):
-            predictions.append(1)
-        elif (passenger.Fare <= 100) & (passenger.Fare >= 80):
-            predictions.append(1)
-        elif (passenger.Fare <= 140) & (passenger.Fare >= 120):
-            predictions.append(1)
-        elif (passenger.Fare <= 160) & (passenger.Fare >= 180):
-            predictions.append(1)
-        elif (passenger.Fare >= 500):
-            predictions.append(1)
 
-        else:
-            predictions.append(0)
-    return pd.Series(predictions)
+def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.Blues):
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    # tick_marks = np.arange(len(iris.target_names))
+    # plt.xticks(tick_marks, iris.target_names, rotation=45)
+    # plt.yticks(tick_marks, iris.target_names)
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
 
 # Import train and test raw data
 train_data_raw = pd.read_csv("train.csv")
 test_data_raw = pd.read_csv("test.csv")
 
-train_data = train_data_raw[["Pclass","Sex","Age","SibSp","Parch","Fare"]]
+train_data = train_data_raw[["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare"]]
 train_data_results = train_data_raw["Survived"]
 
 # male   = 1
 # female = 0
 train_data.ix[train_data.Sex == "male", "Sex"] = 1
 train_data.ix[train_data.Sex == "female", "Sex"] = 0
-train_data.Age = train_data.fillna(train_data.Age.mean())
+train_data.Age = train_data.Age.fillna(train_data.Age.mean())
 
 
 # normalizing the data
 train_data_scaled = scale(train_data)
 
+# with gridsearch
+parameters = {'min_samples_split': np.linspace(2,100,99),
+              'criterion': ["gini", "entropy"],
+              'splitter': ["best","random"]
+             }
+clf = grid_search.GridSearchCV(tree.DecisionTreeClassifier(), parameters)
+model = clf.fit(train_data_scaled, train_data_results)
 
-clf = svm.SVC(decision_function_shape='poly')
-clf.fit(train_data_scaled, train_data_results)
-print accuracy_score(train_data_results,clf.predict(train_data_scaled))
+# without gridsearch
+model2 = tree.ExtraTreeClassifier().fit(train_data_scaled, train_data_results)
+
+res1 = model.predict(train_data_scaled)
+res2 = model2.predict(train_data_scaled)
+
+print "gridsearch accuracy: " + str(accuracy_score(train_data_results, res1))
+print "regular accuracy: " + str(accuracy_score(train_data_results, res2))
 
 
-parameters = {'kernel':('linear', 'rbf'), 'C':[1, 10]}
-clf2 = grid_search.GridSearchCV(svm.SVC(), parameters)
-clf2.fit(train_data_scaled, train_data_results)
-print accuracy_score(train_data_results,clf2.predict(train_data_scaled))
+from sklearn.metrics import confusion_matrix
+cm = confusion_matrix(res1, clf.predict(train_data_scaled))
+plot_confusion_matrix(cm)
 
-test_data = test_data_raw[["PassengerId","Pclass","Sex","Age","SibSp","Parch","Fare"]]
+cm = confusion_matrix(res2, clf.predict(train_data_scaled))
+plot_confusion_matrix(cm)
 
 
-predictions = predictions_3(test_data)
-print accuracy_score(train_data_results, predictions)
+test_data = test_data_raw[["PassengerId", "Pclass", "Sex", "Age", "SibSp", "Parch", "Fare"]]
+# male   = 1
+# female = 0
+test_data.ix[test_data.Sex == "male", "Sex"] = 1
+test_data.ix[test_data.Sex == "female", "Sex"] = 0
+test_data.Age = test_data.Age.fillna(test_data.Age.mean())
+test_data.Fare = test_data["Fare"].fillna(test_data["Fare"].mean())
+# normalizing the data
+test_data_scaled = scale(test_data[["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare"]])
+#predicting the outcome
+test_prediction = model2.predict(test_data_scaled)
 
 output = pd.DataFrame({
     "PassengerId": test_data["PassengerId"],
-    "Survived": predictions
+    "Survived": test_prediction
     })
 output = output.set_index("PassengerId")
 output.to_csv("output.csv")
