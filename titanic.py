@@ -77,11 +77,12 @@ def optimize_data(df_):
     df.drop('Ticket', axis=1, inplace=True)
 
     df.fillna(-1, inplace=True)
+
     return df.astype(float)
 
 def check_model(model, train_scaled, train_res):
     from sklearn.cross_validation import KFold
-    kf = KFold(train_scaled.__len__(), n_folds=20)
+    kf = KFold(train_scaled.__len__(), n_folds=10)
     acc = []
     for train_index, test_index in kf:
         # print("TRAIN:", (train_index.min(),train_index.max()), "TEST:", (test_index.min(),test_index.max()))
@@ -89,7 +90,7 @@ def check_model(model, train_scaled, train_res):
         model.fit(train_scaled[train_index,:], train_res[train_index])
         prediction = model.predict(train_scaled[test_index,:])
         score = accuracy_score(prediction, train_res[test_index])
-        print "model accuracy: " + str(score)
+        print str(type(model)) + " model accuracy: " + str(score)
         acc.append(score)
     import matplotlib.pyplot as plt
     plt.plot(acc)
@@ -105,6 +106,15 @@ test_data_raw = pd.read_csv("test.csv")
 
 train_data = optimize_data(train_data_raw)
 test_data = optimize_data(test_data_raw)
+
+# Remove the features with low variance
+from sklearn.feature_selection import VarianceThreshold
+sel = VarianceThreshold(threshold=(.8 * (1 - .8)))
+sel.fit(train_data).variances_<(.8 * (1 - .8))
+train_data = train_data[train_data.columns[sel.fit(train_data).variances_>(.8 * (1 - .8))]]
+test_data = test_data[train_data.columns[sel.fit(train_data).variances_>(.8 * (1 - .8))]]
+
+# test_data must contain the same columns as train data due to model fitting and prediction
 for column in train_data.columns:
     if not column in test_data.columns:
         test_data[column] = pd.DataFrame().apply(lambda _: '', axis=1)
@@ -128,9 +138,13 @@ test_data_scaled = scale(test_data)
 #model = clf.fit(train_data_scaled, train_data_results)
 # without gridsearch
 #model2 = tree.ExtraTreeClassifier().fit(train_data_scaled, train_data_results)
-
+from sklearn import tree
+from sklearn.linear_model import SGDClassifier
 
 model = check_model(svm.SVC(), train_data_scaled, train_data_results)
+#model = check_model(tree.DecisionTreeClassifier(), train_data_scaled, train_data_results)
+#model = check_model(tree.ExtraTreeClassifier(), train_data_scaled, train_data_results)
+#model = check_model(SGDClassifier(), train_data_scaled, train_data_results)
 
 #predicting the outcome
 test_prediction = model.predict(test_data_scaled)
